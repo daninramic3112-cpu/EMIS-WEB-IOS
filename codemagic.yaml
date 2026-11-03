@@ -1,0 +1,59 @@
+
+workflows:
+  emis-iphone:
+    name: EMIS - iPhone 11
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    environment:
+      xcode: latest
+
+    scripts:
+      - name: Install XcodeGen
+        script: |
+          brew install xcodegen
+
+      - name: Generate project
+        script: |
+          set -e
+          xcodegen generate
+
+      - name: Build application
+        script: |
+          set -e
+
+          xcodebuild clean build \
+            -project EMIS.xcodeproj \
+            -scheme EMIS \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -configuration Debug \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Verify executable
+        script: |
+          set -e
+
+          APP="build/Build/Products/Debug-iphoneos/EMIS.app"
+
+          test -d "$APP"
+          test -f "$APP/EMIS"
+
+          echo "EMIS executable found!"
+
+      - name: Create IPA
+        script: |
+          set -e
+
+          mkdir -p Payload build/ipa
+
+          cp -R build/Build/Products/Debug-iphoneos/EMIS.app Payload/
+
+          zip -qr build/ipa/EMIS-unsigned.ipa Payload
+
+          ls -lh build/ipa/EMIS-unsigned.ipa
+
+    artifacts:
+      - build/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
